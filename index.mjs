@@ -17,17 +17,18 @@ function resolveJSFile(file){
     throw new Error('There is no module found by specifier ' + file)
 }
 
-function require(module){
-    const callerFile = (new Error).stack.split(/\n/g)[2].split(/^\s*at\s.*?\(/)[1].split(/:\d+:\d+\)/)[0];
-    const targetModulePath = module[0] === '.' ? resolvePath(callerFile, '..', module) : resolvePath(module);
+function require(modulePath, module){
+    if(!modulePath) modulePath = resolvePath(decodeURI((new Error).stack.split(/\n/g)[2].split(/^\s*at\s+/)[1].split(/:\d:\d/)[0].slice(7)), '..');
+    const targetModulePath = module[0] === '.' ? resolvePath(modulePath, module) : resolvePath(module);
     if(!(targetModulePath in global['require-lite permanent storage'])){
         const src = resolveJSFile(targetModulePath);
         const targetModule = new Function('__filename', '__dirname', 'module', 'exports', 'require', src);
         const moduleExport = { exports: {} };
-        targetModule(targetModulePath, resolvePath(targetModulePath, '..'), moduleExport, moduleExport.exports, require);
+        const moduleDir = resolvePath(targetModulePath, '..');
+        targetModule(targetModulePath, moduleDir, moduleExport, moduleExport.exports, require.bind(null, moduleDir));
         global['require-lite permanent storage'][targetModulePath] = moduleExport.exports;
     }
     return global['require-lite permanent storage'][targetModulePath];
 }
 
-export default require
+export default require.bind(null, null)
